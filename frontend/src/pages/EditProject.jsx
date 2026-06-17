@@ -35,7 +35,7 @@ export default function EditProject() {
     const fetchProject = async () => {
       try {
         const { data } = await getProject(id);
-        if (data.user?._id !== user.id && data.user !== user.id) {
+        if (data.user?._id !== user._id && data.user !== user._id) {
           showToast('Not authorized to edit this project', 'error');
           navigate('/');
           return;
