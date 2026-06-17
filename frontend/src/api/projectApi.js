@@ -14,4 +14,4 @@ export const toggleLike = (id) => API.post(`/projects/${id}/like`);
 export const getComments = (id) => API.get(`/projects/${id}/comments`);
 export const addComment = (id, text) => API.post(`/projects/${id}/comments`, { text });
 export const deleteComment = (id) => API.delete(`/comments/${id}`);
-export const sendCollabRequest = (id, message) => API.post(`/projects/${id}/collab-requests`, { message });
+export const sendCollabRequest = (id, message) => API.post(`/collab-requests/${id}/collab-requests`, { message });
