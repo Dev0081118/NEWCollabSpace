@@ -1,0 +1,204 @@
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { getProject, updateProject } from '../api/projectApi';
+
+const CATEGORIES = ['Web', 'Mobile', 'AI/ML', 'Design', 'DevOps', 'Game Dev', 'Other'];
+
+export default function EditProject() {
+  const { id } = useParams();
+  const { user, showToast, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    techStack: '',
+    category: 'Web',
+    githubLink: '',
+    demoLink: '',
+    lookingForCollab: false,
+  });
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [currentImage, setCurrentImage] = useState('');
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate('/');
+      return;
+    }
+    if (!user) return;
+
+    const fetchProject = async () => {
+      try {
+        const { data } = await getProject(id);
+        if (data.user?._id !== user.id && data.user !== user.id) {
+          showToast('Not authorized to edit this project', 'error');
+          navigate('/');
+          return;
+        }
+        setForm({
+          title: data.title || '',
+          description: data.description || '',
+          techStack: data.techStack?.join(', ') || '',
+          category: data.category || 'Web',
+          githubLink: data.githubLink || '',
+          demoLink: data.demoLink || '',
+          lookingForCollab: data.lookingForCollab || false,
+        });
+        setCurrentImage(data.imageUrl || '');
+      } catch (err) {
+        showToast('Failed to load project', 'error');
+        navigate('/');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProject();
+  }, [id, user, authLoading, navigate, showToast]);
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+    setError('');
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image must be less than 5MB');
+        return;
+      }
+      setImage(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!form.title.trim()) { setError('Title is required'); return; }
+    if (!form.description.trim()) { setError('Description is required'); return; }
+
+    setSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', form.title);
+      formData.append('description', form.description);
+      formData.append('techStack', form.techStack);
+      formData.append('category', form.category);
+      formData.append('githubLink', form.githubLink);
+      formData.append('demoLink', form.demoLink);
+      formData.append('lookingForCollab', form.lookingForCollab);
+      if (image) formData.append('image', image);
+
+      const { data } = await updateProject(id, formData);
+      showToast('Project updated successfully!');
+      navigate(`/project/${data.project._id}`);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update project');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (authLoading || loading) {
+    return (
+      <div className="container" style={{ maxWidth: 640, paddingTop: 32 }}>
+        <div className="skeleton" style={{ height: 40, width: '50%', marginBottom: 24 }} />
+        <div className="skeleton" style={{ height: 400 }} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="container" style={{ maxWidth: 640, paddingTop: 32, paddingBottom: 60 }}>
+      <div className="card" style={{ padding: 32 }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>Edit Project</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 14, marginBottom: 24 }}>
+          Update your project information
+        </p>
+
+        {error && (
+          <div style={{ padding: '10px 14px', background: 'rgba(225, 112, 85, 0.15)', color: 'var(--error)', borderRadius: 'var(--radius-sm)', marginBottom: 16, fontSize: 14 }}>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="input-group">
+            <label>Title *</label>
+            <input type="text" name="title" value={form.title} onChange={handleChange} />
+          </div>
+
+          <div className="input-group">
+            <label>Description *</label>
+            <textarea name="description" value={form.description} onChange={handleChange} rows={4} />
+          </div>
+
+          <div className="input-group">
+            <label>Tech Stack * (comma separated)</label>
+            <input type="text" name="techStack" value={form.techStack} onChange={handleChange} />
+          </div>
+
+          <div className="input-group">
+            <label>Category</label>
+            <select name="category" value={form.category} onChange={handleChange}>
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="input-group">
+            <label>Thumbnail Image</label>
+            <input type="file" accept="image/*" onChange={handleImageChange} style={{
+              padding: '10px', background: 'var(--bg-input)', border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)', color: 'var(--text-primary)', fontSize: 14,
+            }} />
+            {(imagePreview || currentImage) && (
+              <div style={{ marginTop: 8, borderRadius: 'var(--radius-sm)', overflow: 'hidden', maxWidth: 200 }}>
+                <img src={imagePreview || currentImage} alt="Preview" style={{ width: '100%' }} />
+              </div>
+            )}
+          </div>
+
+          <div className="input-group">
+            <label>GitHub Link</label>
+            <input type="url" name="githubLink" value={form.githubLink} onChange={handleChange} />
+          </div>
+
+          <div className="input-group">
+            <label>Live Demo Link</label>
+            <input type="url" name="demoLink" value={form.demoLink} onChange={handleChange} />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={form.lookingForCollab}
+                onChange={(e) => setForm({ ...form, lookingForCollab: e.target.checked })}
+                style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
+              />
+              <span style={{ fontSize: 14 }}>Looking for collaborators</span>
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={submitting} style={{ flex: 1 }}>
+              {submitting ? 'Saving...' : '💾 Save Changes'}
+            </button>
+            <button type="button" className="btn btn-secondary btn-lg" onClick={() => navigate('/profile')}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
