@@ -14,6 +14,7 @@ exports.getProjects = async (req, res) => {
     if (search) {
       query.$or = [
         { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
         { techStack: { $regex: search, $options: 'i' } },
       ];
     }

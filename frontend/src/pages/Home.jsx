@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getProjects, getTrendingProjects, toggleLike } from '../api/projectApi';
 import { useAuth } from '../context/AuthContext';
 import ProjectCard from '../components/ProjectCard';
@@ -12,16 +12,29 @@ export default function Home() {
   const [trending, setTrending] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showAuth, setShowAuth] = useState(false);
+  const debounceTimer = useRef(null);
+
+  // Debounce search input
+  const handleSearchChange = (e) => {
+    const value = e.target.value;
+    setSearch(value);
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => {
+      setDebouncedSearch(value);
+      setPage(1);
+    }, 300);
+  };
 
   const fetchProjects = useCallback(async () => {
     try {
       setLoading(true);
       const params = { page, limit: 12 };
-      if (search) params.search = search;
+      if (debouncedSearch) params.search = debouncedSearch;
       if (category && category !== 'All') params.category = category;
       const { data } = await getProjects(params);
       setProjects(data.projects);
@@ -31,7 +44,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [page, search, category]);
+  }, [page, debouncedSearch, category]);
 
   const fetchTrending = useCallback(async () => {
     try {
@@ -72,12 +85,6 @@ export default function Home() {
     }
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    setPage(1);
-    fetchProjects();
-  };
-
   return (
     <div>
       {/* Hero Section */}
@@ -94,12 +101,12 @@ export default function Home() {
               The creative community for developers, designers, and innovators. 
               Share your work, find collaborators, and get inspired.
             </p>
-            <form onSubmit={handleSearch} style={styles.searchBox}>
+            <form onSubmit={(e) => { e.preventDefault(); setDebouncedSearch(search); setPage(1); }} style={styles.searchBox}>
               <input
                 type="text"
-                placeholder="Search projects by title or tech stack..."
+                placeholder="Search projects by title, description or tech stack..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={handleSearchChange}
                 style={styles.searchInput}
               />
               <button type="submit" className="btn btn-primary" style={{ height: 48, borderRadius: '0 12px 12px 0' }}>
