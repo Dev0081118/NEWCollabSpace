@@ -37,6 +37,7 @@ export const AuthProvider = ({ children }) => {
 
   const signup = async (formData) => {
     const { data } = await signupApi(formData);
+    if (data.token) localStorage.setItem('token', data.token);
     setUser(data.user);
     showToast('Account created successfully!');
     return data;
@@ -44,6 +45,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (formData) => {
     const { data } = await loginApi(formData);
+    if (data.token) localStorage.setItem('token', data.token);
     setUser(data.user);
     showToast('Logged in successfully!');
     return data;
@@ -51,6 +53,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     await logoutApi();
+    localStorage.removeItem('token');
     setUser(null);
     showToast('Logged out successfully');
   };
